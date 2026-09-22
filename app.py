@@ -7,24 +7,29 @@ from openai import OpenAI
 #from streamlit_drawable_canvas import st_canvas
 #from PIL import Image
 #import io
-# CSS to hide ONLY the Deploy button and the GitHub repository header elements
+# Updated precise CSS to keep the 3-dot menu but hide Deploy and GitHub buttons
 st.markdown(
     """
     <style>
-    /* Hides the "Deploy" button */
-    [data-testid="stDeployButton"] {
+    /* 1. Hide the "Deploy" button */
+    .stDeployButton {
         display: none !important;
     }
     
-    /* Hides the GitHub icon/link box on Streamlit Cloud */
-    header [class*="st-emotion-cache"] button, 
-    header [class*="st-emotion-cache"] a {
+    /* 2. Hide the GitHub link/icon block specifically without touching the menu */
+    header [data-testid="stConnectionStatus"],
+    header a[href*="github.com"],
+    header button:has(svg path[d*="M12 2C6.477 2 2 6.484 2 12.017"]) {
         display: none !important;
     }
-    
-    /* Ensures the main container decoration doesn't block the remaining 3-dot menu */
-    [data-testid="stDecoration"] {
+
+    /* 3. Alternative block to strip any extra Cloud host icons next to the menu */
+    header div div:first-child {
         display: none !important;
+    }
+    /* Keep the 3-dot menu visible */
+    header div div:last-child {
+        display: flex !important;
     }
     </style>
     """,
