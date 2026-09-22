@@ -18,6 +18,59 @@ st.set_page_config(
     page_icon="🧠",
     layout="wide"
 )
+# ==================================================
+# Global CSS
+# ==================================================
+st.markdown("""
+<style>
+
+.hero-card {
+
+    background: var(--secondary-background-color);
+
+    border: 1px solid rgba(120,120,120,0.15);
+
+    border-left: 5px solid #667eea;
+
+    border-radius: 14px;
+
+    padding: 8px 16px;
+
+    margin-top: 10px;
+
+    margin-bottom: 10px;
+
+    box-shadow:
+        0 3px 8px rgba(0,0,0,0.06);
+}
+
+.hero-card h1{
+
+    margin: 0;
+
+    font-size: 26px;
+
+    line-height: 1.1;
+}
+
+.hero-card p{
+
+    opacity: 0.85;
+
+    margin-top: 2px;
+
+    margin-bottom: 0;
+
+    font-size: 13px;
+
+    line-height: 1.2;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+#====================================================
+
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -89,8 +142,19 @@ def load_templates():
     save_templates(default_templates)
 
     return default_templates
+#mdttemplates-------------------------------------
+
+MDT_TEMPLATE_FILE = "mdt_templates.json"
 
 
+def load_mdt_templates():
+
+    if os.path.exists(MDT_TEMPLATE_FILE):
+        with open(MDT_TEMPLATE_FILE,"r") as file:
+            return json.load(file)
+
+    return {}
+#---------------------------------------------------
 def build_prompt(columns, notes):
 
     fields = "\n".join(columns)
@@ -156,6 +220,7 @@ def clean_json_response(response_text):
 # ==================================================
 
 templates = load_templates()
+mdt_templates = load_mdt_templates()
 #===================================================
 #FLOATER
 #===================================================
@@ -169,7 +234,7 @@ st.markdown(
         font-weight:bold;
     ">
         <marquee>
-        📢 Welcome to Scripto | Use your own API Key | New Diagram Copy Feature Available | Built for SAP Consultants | CREATED BY : NABIL AKHTAR
+        📢 🚀 Welcome to Scripto | SAP Consultant Productivity Suite | MDT Generator Available | Diagram Copy Feature Available | CREATED BY : NABIL AKHTAR
         </marquee>
     </div>
     """,
@@ -180,6 +245,18 @@ st.markdown(
 # SIDEBAR
 # ==================================================
 
+st.sidebar.markdown(
+    """
+    <div style="text-align:center;">
+        <h1>🧠 Scripto</h1>
+        <p>SAP Consultant's Productivity Suite</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.sidebar.divider()
+
 st.sidebar.title("Navigation")
 
 page = st.sidebar.radio(
@@ -187,25 +264,13 @@ page = st.sidebar.radio(
     [
         "AI Test Script Generator",
         "Template Manager",
-        "Diagram Playground"
+        "Diagram Playground",
+        "MDT Generator"
     ]
 )
 
-st.sidebar.divider()
-
-st.sidebar.header("About Scripto")
-
-st.sidebar.write(
-    """
-AI Test Script Generator helps SAP
-Techno-Functional Consultants create
-professional test scripts using AI.
-"""
-)
 
 st.sidebar.divider()
-
-
 
 api_key = st.sidebar.text_input(
     "API Key",
@@ -218,16 +283,18 @@ api_key = st.sidebar.text_input(
  
 if page == "AI Test Script Generator":
  
-    st.title("AI Test Script Generator")
- 
-    st.write(
-        """
-        Select a template, choose a model,
-        enter testing notes, generate a
-        professional SAP test script,
-        review and edit it as required.
-        """
-    )
+    st.markdown("""
+<div class="hero-card">
+
+<h1>🚀 AI Test Script Generator</h1>
+
+<p>
+Generate professional SAP SIT, UAT and
+Regression test scripts using AI in seconds.
+</p>
+
+</div>
+""", unsafe_allow_html=True)
  
     col1, col2 = st.columns([2, 1])
  
@@ -427,7 +494,18 @@ if page == "AI Test Script Generator":
 
 elif page == "Template Manager":
 
-    st.title("Template Manager")
+    st.markdown("""
+<div class="hero-card">
+
+<h1>📋 Template Manager</h1>
+
+<p>
+Create, customize and manage reusable testing
+templates tailored to your SAP project needs.
+</p>
+
+</div>
+""", unsafe_allow_html=True)
 
     if "working_columns" not in st.session_state:
         st.session_state.working_columns = []
@@ -594,14 +672,18 @@ elif page == "Diagram Playground":
     import streamlit as st
     import streamlit.components.v1 as components
 
-    st.title("Diagram Playground")
+    st.markdown("""
+<div class="hero-card">
 
-    st.write(
-        """
-        Create process flows and data flow diagrams manually.
-        Enter one step per line and generate a flow diagram.
-        """
-    )
+<h1>📊 Diagram Playground</h1>
+
+<p>
+Build SAP process flows, data flows and solution
+diagrams visually with Mermaid based diagramming.
+</p>
+
+</div>
+""", unsafe_allow_html=True)
 
     flow_text = st.text_area(
         "Flow Steps",
@@ -843,3 +925,313 @@ flowchart TB
                     mermaid_code,
                     language="text"
                 )
+# ==================================================
+# PAGE 4 - MDT GENERATOR
+# ==================================================
+
+elif page == "MDT Generator":
+
+    st.markdown("""
+<div class="hero-card">
+
+<h1>🏗 MDT Generator</h1>
+
+<p>
+Generate SAP master data templates and automatically
+populate mandatory fields using AI driven business
+requirements.
+</p>
+
+</div>
+""", unsafe_allow_html=True)
+
+    selected_model = st.selectbox(
+        "Select Model",
+        [
+            "gemini-3.5-flash",
+            "gemini-2.5-pro",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-2.5-flash",
+            "gpt-5",
+            "gpt-5-mini",
+            "gpt-4o",
+            "gpt-4o-mini"
+        ],
+        key="mdt_model"
+    )
+
+    selected_mdts = st.multiselect(
+        "Select MDTs",
+        list(mdt_templates.keys())
+    )
+
+    requirement = st.text_area(
+        "Business Requirement",
+        height=250,
+        placeholder="""
+Create:
+
+Finished Product:
+CHOCOLATE_BAR
+
+Raw Materials:
+COCOA
+SUGAR
+
+Locations:
+PLANT1000
+DC1000
+
+Country:
+India
+"""
+    )
+
+    if st.button(
+        "Generate MDT Values"
+    ):
+
+        if not api_key:
+
+            st.error(
+                "Please enter API Key."
+            )
+
+        elif not selected_mdts:
+
+            st.error(
+                "Select at least one MDT."
+            )
+
+        elif not requirement.strip():
+
+            st.error(
+                "Enter business requirement."
+            )
+
+        else:
+
+            try:
+
+                template_text = ""
+
+                for mdt in selected_mdts:
+
+                    template_text += (
+                        f"\n{mdt}\n"
+                    )
+
+                    for attribute in (
+                        mdt_templates[mdt]
+                    ):
+
+                        template_text += (
+                            f"- {attribute}\n"
+                        )
+
+                prompt = f"""
+You are an SAP IBP Master Data Consultant and SAP Data Migration Expert.
+
+Your task is to generate SAP Master Data values based on the user's business requirement.
+
+Return ONLY valid JSON.
+
+Generate values ONLY for the selected Master Data Types (MDTs).
+
+{template_text}
+
+Rules
+
+- Use EXACT attribute names from the provided MDT templates.
+- Do NOT create, remove, rename, or modify any attributes.
+- Every attribute from the MDT template must appear in the output JSON in the exact order provided.
+- Populate ALL attributes marked with "*" (mandatory attributes).
+- For attributes without "*", leave the value blank ("") unless the user explicitly provides a value for that attribute.
+- If the user explicitly provides a value for a non-mandatory attribute, populate it.
+- Never omit an attribute from the output.
+- Do NOT guess values for optional attributes.
+- Generate multiple records when appropriate.
+- Generate realistic SAP business values.
+- Do NOT populate audit fields such as Changed By, Changed On, Created By, Created On unless explicitly requested.
+- Ensure IDs and cross-references are consistent across MDTs.
+- Return ONLY valid JSON.
+- No markdown.
+- No code blocks.
+- No explanations.
+- No comments.
+
+
+Business Requirement
+
+{requirement}
+"""
+
+                if selected_model.startswith(
+                    "gemini"
+                ):
+
+                    genai.configure(
+                        api_key=api_key
+                    )
+
+                    model = genai.GenerativeModel(
+                        selected_model
+                    )
+
+                    response = (
+                        model.generate_content(
+                            prompt
+                        )
+                    )
+
+                    ai_response = (
+                        response.text
+                    )
+
+                else:
+
+                    client = OpenAI(
+                        api_key=api_key
+                    )
+
+                    response = (
+                        client.chat.completions.create(
+                            model=selected_model,
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content": prompt
+                                }
+                            ]
+                        )
+                    )
+
+                    ai_response = (
+                        response
+                        .choices[0]
+                        .message
+                        .content
+                    )
+
+                cleaned_response = (
+                    clean_json_response(
+                        ai_response
+                    )
+                )
+
+                md_data = json.loads(
+                    cleaned_response
+                )
+
+                rows = []
+
+                max_cols = 200
+
+                for mdt_name, records in (
+                    md_data.items()
+                ):
+
+                    if not records:
+                        continue
+
+                    # MDT NAME ROW
+
+                    mdt_row = (
+                        [""] * max_cols
+                    )
+
+                    mdt_row[0] = mdt_name
+
+                    rows.append(
+                        mdt_row
+                    )
+
+                    # ATTRIBUTE ROW
+
+                    attributes = list(
+                        records[0].keys()
+                    )
+
+                    attr_row = (
+                        [""] * max_cols
+                    )
+
+                    for i, attr in enumerate(
+                        attributes
+                    ):
+
+                        attr_row[
+                            i + 1
+                        ] = attr
+
+                    rows.append(
+                        attr_row
+                    )
+
+                    # VALUE ROWS
+
+                    for record in records:
+
+                        value_row = (
+                            [""] * max_cols
+                        )
+
+                        for i, attr in enumerate(
+                            attributes
+                        ):
+
+                            value_row[
+                                i + 1
+                            ] = str(
+                                record.get(
+                                    attr,
+                                    ""
+                                )
+                            )
+
+                        rows.append(
+                            value_row
+                        )
+
+                    rows.append(
+                        [""] * max_cols
+                    )
+
+                st.session_state[
+                    "mdt_output"
+                ] = pd.DataFrame(
+                    rows,
+                    columns=[
+                        f"Column {i}"
+                        for i in range(
+                            1,
+                            max_cols + 1
+                        )
+                    ]
+                )
+
+                st.success(
+                    "MDT Values Generated"
+                )
+
+            except Exception as e:
+
+                st.error(
+                    f"Error: {str(e)}"
+                )
+
+    if "mdt_output" in st.session_state:
+
+        st.subheader(
+            "Generated MDT Sheet"
+        )
+
+        st.data_editor(
+            st.session_state[
+                "mdt_output"
+            ],
+            use_container_width=True,
+            hide_index=True,
+            num_rows="dynamic"
+        )
