@@ -1,0 +1,12 @@
+name: Keep Streamlit App Alive
+
+on:
+  schedule:
+    - cron: '0 */2 * * *' # Yeh har 2 ghante me automatic chalega
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Ping Streamlit App
+      run: curl -I "https://2cacgljkam8bepdjz3gihz.streamlit.app"
