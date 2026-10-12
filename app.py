@@ -1604,7 +1604,30 @@ elif page == "Migration Validator":
             # Some installations do not include the optional table-colouring package.
             # In that case, show the same table without colours so work can continue.
             try:
-                comparison_preview = consolidated_display_df.style.apply(shade_consolidated_columns, axis=None)
+                total_cells = (
+                    len(consolidated_display_df)
+                    * len(consolidated_display_df.columns)
+                )
+
+                if total_cells < 250000:
+
+                    comparison_preview = (
+                        consolidated_display_df.style.apply(
+                            shade_consolidated_columns,
+                            axis=None
+                        )
+                    )
+
+                else:
+
+                    comparison_preview = consolidated_display_df
+
+                    st.warning(
+                        f"Large dataset detected "
+                        f"({total_cells:,} cells). "
+                        f"Styling disabled for performance."
+                    )
+
             except ImportError:
                 comparison_preview = consolidated_display_df
             st.dataframe(
