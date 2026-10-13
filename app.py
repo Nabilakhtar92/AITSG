@@ -1399,40 +1399,165 @@ elif page == "Migration Validator":
         # We give columns temporary nicknames for matching, never change cells.
         original_preload_df = preload_df.copy()
         original_postload_df = postload_df.copy()
+        
+        st.markdown("### 3. Map Column Headers")
+        st.caption(
+            "Identical headers are mapped automatically. "
+            "Map only the remaining headers."
+        )
 
-        st.markdown("### 3. Map column headers")
-        st.caption("Choose which target column means the same thing as each source column. Exact names are paired automatically. Cell values are never changed.")
+        if "validator_mappings" not in st.session_state:
+            st.session_state.validator_mappings = {}
 
-        # This fingerprint gives each pair of files its own saved dropdown choices.
-        # Switching files or sheets cannot accidentally reuse an old mapping.
-        mapping_scope = hashlib.sha256(
-            preload_file.getvalue() + postload_file.getvalue()
-            + repr((preload_sheet, postload_sheet, list(preload_df.columns),
-                    list(postload_df.columns))).encode()
-        ).hexdigest()[:20]
         header_mapping = {}
-        mapping_rows = []
-        with st.expander("Match source columns to target columns", expanded=True):
-            for position, source_header in enumerate(preload_df.columns):
-                # None means this source column has no partner in the target file.
-                options = [None] + list(postload_df.columns)
-                default = options.index(source_header) if source_header in postload_df.columns else 0
-                target_header = st.selectbox(
-                    f"Source: {source_header}", options, index=default,
-                    format_func=lambda value: "Unmapped" if value is None else str(value),
-                    key=f"validator_mapping_{mapping_scope}_{position}"
-                )
-                if target_header is not None:
-                    header_mapping[source_header] = target_header
-                mapping_rows.append({"Preload header": source_header,
-                                     "Postload header": target_header if target_header is not None else "",
-                                     "Mapping": "Mapped" if target_header is not None else "Unmapped"})
-        mapping_df = pd.DataFrame(mapping_rows)
-        if len(set(header_mapping.values())) != len(header_mapping):
-            st.error("Each target column can have only one source partner. Remove the duplicate mapping to continue.")
-            st.stop()
-        st.caption(f"{len(header_mapping)} mapped pairs · {len(preload_df.columns) - len(header_mapping)} unmapped source columns")
 
+        # Auto map same headers
+        for col in preload_df.columns:
+            if col in postload_df.columns:
+                header_mapping[col] = col
+
+        # Add manual mappings
+        header_mapping.update(
+            st.session_state.validator_mappings
+        )
+        
+
+        unmapped_source = [
+            col
+            for col in preload_df.columns
+            if col not in header_mapping
+        ]
+
+        unmapped_target = [
+            col
+            for col in postload_df.columns
+            if col not in header_mapping.values()
+        ]
+
+        # Manual Mapping UI
+        if unmapped_source and unmapped_target:
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                source_header = st.selectbox(
+                    "Source Header",
+                    unmapped_source
+                )
+
+            with col2:
+                target_header = st.selectbox(
+                    "Target Header",
+                    unmapped_target
+                )
+
+            if st.button("➕ Add Mapping"):
+
+                st.session_state.validator_mappings[
+                    source_header
+                ] = target_header
+
+                st.rerun()
+
+        mapping_rows = []
+
+        for source_header, target_header in header_mapping.items():
+
+            mapping_rows.append(
+                {
+                    "Preload Header": source_header,
+                    "Postload Header": target_header,
+                    "Status": "Mapped"
+                }
+            )
+
+        mapping_df = pd.DataFrame(mapping_rows)
+
+        with st.expander(
+            f"✅ Mapped Headers ({len(mapping_df)})",
+            expanded=False
+        ):
+            if not mapping_df.empty:
+
+                st.dataframe(
+                    mapping_df,
+                    hide_index=True,
+                    use_container_width=True
+                )
+                manual_mapping_keys = list(
+                    st.session_state.validator_mappings.keys()
+                )
+
+                if manual_mapping_keys:
+
+                    st.markdown("### Remove Mapping")
+
+                    mapping_to_remove = st.selectbox(
+                        "Select Mapping",
+                        [
+                            f"{source} → "
+                            f"{st.session_state.validator_mappings[source]}"
+                            for source in manual_mapping_keys
+                        ]
+                    )
+
+                    if st.button("🗑 Remove Selected Mapping"):
+
+                        source_header = mapping_to_remove.split(" → ")[0]
+
+                        del st.session_state.validator_mappings[
+                            source_header
+                        ]
+
+                        st.rerun()
+        with st.expander(
+            f"⚠️ Unmapped Headers "
+            f"(Source: {len(unmapped_source)} | Target: {len(unmapped_target)})",
+            expanded=True
+        ):
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                st.subheader("Unmapped Source Headers")
+
+                st.dataframe(
+                    pd.DataFrame(
+                        {
+                            "Source Header": unmapped_source
+                        }
+                    ),
+                    hide_index=True,
+                    use_container_width=True
+                )
+
+            with col2:
+
+                st.subheader("Unmapped Target Headers")
+
+                st.dataframe(
+                    pd.DataFrame(
+                        {
+                            "Target Header": unmapped_target
+                        }
+                    ),
+                    hide_index=True,
+                    use_container_width=True
+                )
+
+        if len(set(header_mapping.values())) != len(header_mapping):
+
+            st.error(
+                "Each target column can only be mapped once."
+            )
+
+            st.stop()
+
+        st.caption(
+            f"{len(header_mapping)} mapped pairs • "
+            f"{len(unmapped_source)} unmapped source headers"
+        )
         # Give every mapped pair one unique internal name. Unmapped columns get
         # different names so they cannot be matched just because names look alike.
         # Unique names also make swaps (A → B and B → A) safe.
@@ -1474,7 +1599,7 @@ elif page == "Migration Validator":
         primary_keys = st.multiselect(
             "Primary key column(s)", common_headers,
             format_func=lambda c: f"{source_labels[c]} ↔ {target_labels[c]}",
-            key=f"validator_primary_keys_{mapping_scope}_{hashlib.sha256(repr(sorted(header_mapping.items())).encode()).hexdigest()[:12]}",
+            key="validator_primary_keys",
             placeholder="Select one or more shared columns"
         )
         if not primary_keys:
@@ -1522,6 +1647,64 @@ elif page == "Migration Validator":
         # Put the real headers back on missing-record tables before showing them.
         missing_in_postload = missing_in_postload.rename(columns=source_labels)
         missing_in_preload = missing_in_preload.rename(columns=target_labels)
+        # Apply mapped header names for display
+        display_mapping = {
+            target: source
+            for source, target in header_mapping.items()
+        }
+        missing_in_preload = missing_in_preload.rename(
+            columns=display_mapping
+        )
+        missing_in_postload = missing_in_postload.rename(
+            columns=display_mapping
+        )
+        # ==================================================
+        # RENEWED PRELOAD / POSTLOAD
+        # ==================================================
+
+        renewed_preload = original_preload_df.copy()
+
+        renewed_postload = original_postload_df.copy()
+
+        # Rename mapped target headers to source names
+        renewed_postload = renewed_postload.rename(
+            columns=display_mapping
+        )
+
+        # Common column order
+        common_column_order = []
+
+        # mapped headers first
+        for source_header in header_mapping.keys():
+
+            if source_header not in common_column_order:
+
+                common_column_order.append(source_header)
+
+        # preload only columns
+        for col in renewed_preload.columns:
+
+            if col not in common_column_order:
+
+                common_column_order.append(col)
+
+        # postload only columns
+        for col in renewed_postload.columns:
+
+            if col not in common_column_order:
+
+                common_column_order.append(col)
+
+        renewed_preload = renewed_preload.reindex(
+            columns=common_column_order,
+            fill_value=""
+        )
+
+        renewed_postload = renewed_postload.reindex(
+            columns=common_column_order,
+            fill_value=""
+        )
+
 
         st.markdown("### 6. Validation results")
         result_cols = st.columns(4)
@@ -1530,8 +1713,8 @@ elif page == "Migration Validator":
         result_cols[2].metric("Missing in Preload", f"{len(missing_in_preload):,}")
         result_cols[3].metric("Consolidated rows", f"{len(consolidated_df):,}")
 
-        tab_postload, tab_preload, tab_consolidated = st.tabs([
-            "Missing in Postload", "Missing in Preload", "Consolidated View"
+        tab_postload, tab_preload, tab_consolidated, tab_rpreload, tab_rpostload = st.tabs([
+            "Missing in Postload", "Missing in Preload", "Consolidated View","Renewed Preload","Renewed Postload"
         ])
         with tab_postload:
             st.caption("Source records whose selected primary key was not found in the target file.")
@@ -1574,7 +1757,18 @@ elif page == "Migration Validator":
                 if column in primary_keys:
                     continue
                 if column in preload_df.columns:
-                    display_rename_map[f"{column}_Postload"] = f"{target_labels[column]} | Postload"
+                    display_name = target_labels[column]
+
+                    for source, target in header_mapping.items():
+
+                        if target_labels[column] == target:
+
+                            display_name = source
+                            break
+
+                    display_rename_map[
+                        f"{column}_Postload"
+                    ] = f"{display_name} | Postload"
                     postload_display_columns.append(display_rename_map[f"{column}_Postload"])
                 else:
                     display_rename_map[column] = f"{target_labels[column]} | Postload"
@@ -1643,6 +1837,26 @@ elif page == "Migration Validator":
                 height=420,
                 show_table=False
             )
+            
+            with tab_rpreload:
+
+                    render_copyable_preview(
+                        "Renewed Preload",
+                        renewed_preload,
+                        "renewed-preload",
+                        "Mapped headers applied and columns aligned.",
+                        height=450
+                    )
+
+            with tab_rpostload:
+
+                render_copyable_preview(
+                "Renewed Postload",
+                renewed_postload,
+                "renewed-postload",
+                "Mapped headers applied and columns aligned.",
+                height=450
+            )
 
         st.markdown("### 7. Export validation report")
         st.caption("The Excel report contains a summary, header mapping, column analysis, both missing-record lists, and the consolidated view. Common-records output is intentionally omitted.")
@@ -1674,6 +1888,17 @@ elif page == "Migration Validator":
                 # The exported table uses readable original headers, not temporary names.
                 consolidated_display_df.to_excel(writer, sheet_name="Consolidated View", index=False)
                 mapping_df.to_excel(writer, sheet_name="Header Mapping", index=False)
+                renewed_preload.to_excel(
+                    writer,
+                    sheet_name="Renewed Preload",
+                    index=False
+                )
+
+                renewed_postload.to_excel(
+                    writer,
+                    sheet_name="Renewed Postload",
+                    index=False
+                )
                 # Make report sheets easier to review in Excel.
                 for worksheet in writer.sheets.values():
                     worksheet.freeze_panes = "A2"
